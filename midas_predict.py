@@ -1,5 +1,8 @@
 import argparse
+import sys
+import time
 import cv2
+import numpy as np
 import torch
 import urllib.request
     
@@ -11,6 +14,8 @@ def main(opt):
     midas.to(device)
     midas.eval()
     img = download_img(opt.filename)
+    
+    start_time = time.time()
     input_batch = transform(img).to(device)
 
     with torch.no_grad():
@@ -23,15 +28,22 @@ def main(opt):
         ).squeeze()
 
     depth_img = prediction.cpu().numpy()
-    output = normalize_depth(depth_img, bits=2)
-    cv2.imwrite(opt.out_name, output)
+    output_norm = cv2.normalize(depth_img, None, 0, 1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    #output_norm = normalize_depth(output_norm, bits=2)
+    colored_depth = (output_norm*255).astype(np.uint8)
+    colored_depth = cv2.applyColorMap(colored_depth, cv2.COLORMAP_MAGMA)
+    
+    print("Prediction took {:.2f} seconds".format(time.time() - start_time))
+
+    cv2.imwrite(opt.out_name+'.jpg', output_norm)
+    cv2.imwrite(opt.out_name+'_colored.jpg', colored_depth)
     print('prediction succeeded!')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, default='DPT_Large', help='DPT_Large / DPT_Hybrid/ MiDaS_small')
     parser.add_argument('-i', '--filename', type=str, default='input/input.jpg', help='input image name')
-    parser.add_argument('-o', '--out_name', type=str, default='output/result.png', help='optput image name, must png not jpg')
+    parser.add_argument('-o', '--out_name', type=str, default='output/result', help='optput image name, must png not jpg')
     opt = parser.parse_args()
     try:
         main(opt)
