@@ -13,11 +13,13 @@ def main(opt):
     midas, transform = download_mids(model_type=opt.mode)
     midas.to(device)
     midas.eval()
-    img = download_img(opt.filename)
     
+    img = download_img(opt)
+    print(img.shape) 
     start_time = time.time()
     input_batch = transform(img).to(device)
-
+    print("input_batch", input_batch.shape)
+    
     with torch.no_grad():
         prediction = midas(input_batch)
         prediction = torch.nn.functional.interpolate(
@@ -38,6 +40,7 @@ def main(opt):
     cv2.imwrite(opt.out_name+'.jpg', output_norm)
     cv2.imwrite(opt.out_name+'_colored.jpg', colored_depth)
     print('prediction succeeded!')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

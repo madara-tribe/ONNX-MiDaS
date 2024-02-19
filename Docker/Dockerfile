@@ -23,5 +23,5 @@ RUN pip3 install torch torchvision torchaudio
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt
 RUN rm /tmp/requirements.txt
-
+RUN pip3 install onnx==1.7.0 onnxruntime==1.5.2
 CMD [ "/bin/bash" ]
