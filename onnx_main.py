@@ -1,18 +1,10 @@
 import os
-import glob
 import torch
-import utils
-import cv2
-import numpy as np
-from torchvision.transforms import Compose, Normalize
-from torchvision import transforms
 import argparse
 from shutil import copyfile
-import fileinput
 import sys
 
 from midas.midas_net import MidasNet
-from midas.transforms import Resize, NormalizeImage, PrepareForNet
 from onnxs.onnx_convert import convert
 from onnxs.onnx_inference import inference
 

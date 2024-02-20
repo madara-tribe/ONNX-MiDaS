@@ -4,7 +4,6 @@ import time
 import cv2
 import numpy as np
 import torch
-import urllib.request
     
 from utils import normalize_depth, download_mids, download_img
     

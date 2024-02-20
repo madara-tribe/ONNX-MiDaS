@@ -1,10 +1,7 @@
-import argparse
-import sys
 import time
 import onnxruntime as rt
 import cv2
 import torch
-import os
 import numpy as np
 
 from utils import read_image, call_transform
@@ -14,8 +11,6 @@ torch.backends.cudnn.benchmark = True
 
 
 def inference(opt):
-    #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    device = "cpu"
     transform, net_h, net_w = call_transform()
     image = read_image(opt.filename)
     

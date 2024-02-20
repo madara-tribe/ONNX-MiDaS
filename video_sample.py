@@ -1,6 +1,6 @@
 import cv2
 
-cap = cv2.VideoCapture("input/driving.mov")
+cap = cv2.VideoCapture("input/movie.mp4")
 if not cap.isOpened():
     print('can not open video')
     exit()
