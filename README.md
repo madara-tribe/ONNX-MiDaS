@@ -44,5 +44,6 @@ $ python3 realtime_predict.py -onnx <onnx_model_path> -v <video path> -o <output
 
 
 # References
-・[MiDaS-github](https://github.com/isl-org/MiDaS)
-・[Midas-onnx](https://github.com/isl-org/MiDaS/tree/master/tf)
+- [MiDaS-github](https://github.com/isl-org/MiDaS)
+
+- [Midas-onnx](https://github.com/isl-org/MiDaS/tree/master/tf)
