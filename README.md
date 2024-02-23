@@ -41,6 +41,7 @@ $ python3 realtime_predict.py -onnx <onnx_model_path> -v <video path> -o <output
 
 ### ONNX (Midas-2.1)
 
+<img src="https://github.com/madara-tribe/MidasDepthEstimater/assets/48679574/c43ec4f3-c96b-4556-af73-0037af503225" width="500px" height="500px"/>
 
 
 # References
