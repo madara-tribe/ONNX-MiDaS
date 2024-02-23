@@ -1,7 +1,6 @@
 # Midas Monocular Depth Estimation
 
-![Improvement_vs_FPS](https://github.com/madara-tribe/MidasDepthEstimater/assets/48679574/a28fd8f1-59b3-4b20-bec4-da3c1e1639d6)
-
+<img src="https://github.com/madara-tribe/MidasDepthEstimater/assets/48679574/a28fd8f1-59b3-4b20-bec4-da3c1e1639d6" width="700px" height="500px"/>
 
 
 ## Version
