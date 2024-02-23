@@ -37,7 +37,7 @@ $ python3 realtime_predict.py -onnx <onnx_model_path> -v <video path> -o <output
 
 ### Pytorch (midas-3.1 Large)
 
-<img src="https://github.com/madara-tribe/MidasDepthEstimater/assets/48679574/551b5e10-c0bd-493b-a2b7-fbe43a7228a7" width="500px" height="300px"/>
+<img src="https://github.com/madara-tribe/MidasDepthEstimater/assets/48679574/551b5e10-c0bd-493b-a2b7-fbe43a7228a7" width="500px" height="500px"/>
 
 ### ONNX (Midas-2.1)
 
