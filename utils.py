@@ -1,67 +1,99 @@
+"""Utils for monoDepth.
+"""
+import sys
+import re
 import numpy as np
 import cv2
 import torch
-import urllib.request
 
-from midas.transforms import Resize, NormalizeImage, PrepareForNet
-from midas.dpt_depth import DPTDepthModel
-from torchvision.transforms import Compose
 
-def load_midas_model(device, model_path="weights/dpt_large_384.pt", model_type="dpt_large_384"):
-    if "openvino" in model_type:
-        keep_aspect_ratio = False
-    else:
-        keep_aspect_ratio = True
+def read_pfm(path):
+    """Read pfm file.
 
-    model = DPTDepthModel(
-            path=model_path,
-            backbone="vitl16_384",
-            non_negative=True,
-        )
-    net_w, net_h = 384, 384
-    resize_mode = "minimal"
-    normalization = NormalizeImage(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
-    transform = Compose(
-            [
-                Resize(
-                    net_w,
-                    net_h,
-                    resize_target=None,
-                    keep_aspect_ratio=keep_aspect_ratio,
-                    ensure_multiple_of=32,
-                    resize_method=resize_mode,
-                    image_interpolation_method=cv2.INTER_CUBIC,
-                ),
-                normalization,
-                PrepareForNet(),
-            ]
-        )
-    return model, transform, net_w, net_h
+    Args:
+        path (str): path to file
 
-def call_transform(model_type="midas_v21_384"):
-    # elif model_type == "midas_v21_384":
-    net_w, net_h = 384, 384
-    resize_mode = "upper_bound"
-    keep_aspect_ratio = False
-    normalization = NormalizeImage(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        )
-    transform = Compose(
-        [
-            Resize(
-                net_w,
-                net_h,
-                resize_target=None,
-                keep_aspect_ratio=keep_aspect_ratio,
-                ensure_multiple_of=32,
-                resize_method=resize_mode,
-                image_interpolation_method=cv2.INTER_CUBIC,
-            ),
-            normalization,
-            PrepareForNet(),
-        ]
-    )
-    return transform, net_w, net_h
+    Returns:
+        tuple: (data, scale)
+    """
+    with open(path, "rb") as file:
+
+        color = None
+        width = None
+        height = None
+        scale = None
+        endian = None
+
+        header = file.readline().rstrip()
+        if header.decode("ascii") == "PF":
+            color = True
+        elif header.decode("ascii") == "Pf":
+            color = False
+        else:
+            raise Exception("Not a PFM file: " + path)
+
+        dim_match = re.match(r"^(\d+)\s(\d+)\s$", file.readline().decode("ascii"))
+        if dim_match:
+            width, height = list(map(int, dim_match.groups()))
+        else:
+            raise Exception("Malformed PFM header.")
+
+        scale = float(file.readline().decode("ascii").rstrip())
+        if scale < 0:
+            # little-endian
+            endian = "<"
+            scale = -scale
+        else:
+            # big-endian
+            endian = ">"
+
+        data = np.fromfile(file, endian + "f")
+        shape = (height, width, 3) if color else (height, width)
+
+        data = np.reshape(data, shape)
+        data = np.flipud(data)
+
+        return data, scale
+
+
+def write_pfm(path, image, scale=1):
+    """Write pfm file.
+
+    Args:
+        path (str): pathto file
+        image (array): data
+        scale (int, optional): Scale. Defaults to 1.
+    """
+
+    with open(path, "wb") as file:
+        color = None
+
+        if image.dtype.name != "float32":
+            raise Exception("Image dtype must be float32.")
+
+        image = np.flipud(image)
+
+        if len(image.shape) == 3 and image.shape[2] == 3:  # color image
+            color = True
+        elif (
+            len(image.shape) == 2 or len(image.shape) == 3 and image.shape[2] == 1
+        ):  # greyscale
+            color = False
+        else:
+            raise Exception("Image must have H x W x 3, H x W x 1 or H x W dimensions.")
+
+        file.write("PF\n" if color else "Pf\n".encode())
+        file.write("%d %d\n".encode() % (image.shape[1], image.shape[0]))
+
+        endian = image.dtype.byteorder
+
+        if endian == "<" or endian == "=" and sys.byteorder == "little":
+            scale = -scale
+
+        file.write("%f\n".encode() % scale)
+
+        image.tofile(file)
+
 
 def read_image(path):
     """Read image and output RGB image (0-1).
@@ -82,38 +114,86 @@ def read_image(path):
     return img
 
 
-def download_mids(model_type):
-    # model_type = "DPT_Large"     # MiDaS v3 - Large     (highest accuracy, slowest inference speed)
-    # model_type = "DPT_Hybrid"   # MiDaS v3 - Hybrid    (medium accuracy, medium inference speed)
-    # model_type = "MiDaS_small"  # MiDaS v2.1 - Small   (lowest accuracy, highest inference speed)
-    midas = torch.hub.load("intel-isl/MiDaS", model_type)
-    
-    midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
-    if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
-        transform = midas_transforms.dpt_transform
+def resize_image(img):
+    """Resize image and make it fit for network.
+
+    Args:
+        img (array): image
+
+    Returns:
+        tensor: data ready for network
+    """
+    height_orig = img.shape[0]
+    width_orig = img.shape[1]
+
+    if width_orig > height_orig:
+        scale = width_orig / 384
     else:
-        transform = transform = midas_transforms.small_transform
-    return midas, transform
-    
-    
-def download_img(opt):
-    if opt.filename==None:
-        url, filename = ("https://github.com/pytorch/hub/raw/master/images/dog.jpg", "dog.jpg")
-        urllib.request.urlretrieve(url, filename)
-    img = cv2.imread(opt.filename)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    return img
+        scale = height_orig / 384
+
+    height = (np.ceil(height_orig / scale / 32) * 32).astype(int)
+    width = (np.ceil(width_orig / scale / 32) * 32).astype(int)
+
+    img_resized = cv2.resize(img, (width, height), interpolation=cv2.INTER_AREA)
+
+    img_resized = (
+        torch.from_numpy(np.transpose(img_resized, (2, 0, 1))).contiguous().float()
+    )
+    img_resized = img_resized.unsqueeze(0)
+
+    return img_resized
 
 
-def normalize_depth(depth, bits):
+def resize_depth(depth, width, height):
+    """Resize depth map and bring to CPU (numpy).
+
+    Args:
+        depth (tensor): depth
+        width (int): image width
+        height (int): image height
+
+    Returns:
+        array: processed depth
+    """
+    depth = torch.squeeze(depth[0, :, :, :]).to("cpu")
+
+    depth_resized = cv2.resize(
+        depth.numpy(), (width, height), interpolation=cv2.INTER_CUBIC
+    )
+
+    return depth_resized
+
+def write_depth(path, depth, grayscale, bits=1):
+    """Write depth map to png file.
+
+    Args:
+        path (str): filepath without extension
+        depth (array): depth
+        grayscale (bool): use a grayscale colormap?
+    """
+    if not grayscale:
+        bits = 1
+
+    if not np.isfinite(depth).all():
+        depth=np.nan_to_num(depth, nan=0.0, posinf=0.0, neginf=0.0)
+        print("WARNING: Non-finite depth values present")
+
     depth_min = depth.min()
     depth_max = depth.max()
+
     max_val = (2**(8*bits))-1
+
     if depth_max - depth_min > np.finfo("float").eps:
         out = max_val * (depth - depth_min) / (depth_max - depth_min)
     else:
-        out = np.zeros(depth.shape, dtype=depth.type)
+        out = np.zeros(depth.shape, dtype=depth.dtype)
+
+    if not grayscale:
+        out = cv2.applyColorMap(np.uint8(out), cv2.COLORMAP_INFERNO)
+
     if bits == 1:
-        return out.astype("uint8")
+        cv2.imwrite(path + ".png", out.astype("uint8"))
     elif bits == 2:
-        return out.astype("uint16")
+        cv2.imwrite(path + ".png", out.astype("uint16"))
+
+    return
