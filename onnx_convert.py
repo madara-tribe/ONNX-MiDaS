@@ -1,17 +1,16 @@
 import argparse
-import cv2
 import torch
-import utils
 from midas.dpt_depth import DPTDepthModel
 from midas.midas_net_custom import MidasNet_small
 from midas.midas_net import MidasNet
 import os
 import requests
 import gc
+import numpy as np
+    
+OPSET_VERSION = 14
 
-OPSET_VERSION = 15
-
-class MidasNet_preprocessing(DPTDepthModel):
+class DPTDepthModel_preprocessing(DPTDepthModel):
     """Network for monocular depth estimation.
     """
     def forward(self, x):
@@ -23,12 +22,22 @@ class MidasNet_preprocessing(DPTDepthModel):
         Returns:
             tensor: depth
         """
-
-        mean = torch.tensor([0.485, 0.456, 0.406])
-        std = torch.tensor([0.229, 0.224, 0.225])
-        x.sub_(mean[None, :, None, None]).div_(std[None, :, None, None])
-
         return DPTDepthModel.forward(self, x)
+        
+class MidasNet_preprocessing(MidasNet):
+    """Network for monocular depth estimation.
+    """
+    def forward(self, x):
+        """Forward pass.
+
+        Args:
+            x (tensor): input data (image)
+
+        Returns:
+            tensor: depth
+        """
+        return MidasNet.forward(self, x)
+
 
 def download_file(url, folder_path):
     # Create the folder if it doesn't exist
@@ -322,16 +331,19 @@ def convert_specific_models(opt):
     else:
         mean = torch.tensor([0.5, 0.5, 0.5])
         std = torch.tensor([0.5, 0.5, 0.5])
-    import numpy as np
+        
     # insert normalization layer at the beginning of the model
-    model = MidasNet_preprocessing(model_path, backbone=backbone, non_negative=True)
-    #norm_layer = NormalizationLayer(mean, std)
-    #model = torch.nn.Sequential(norm_layer, model)
+    norm_layer = NormalizationLayer(mean, std)
+    model = torch.nn.Sequential(norm_layer, model)
 
+    if modelName == "midas_v21_384":
+        model = MidasNet_preprocessing(model_path, non_negative=True)
+    elif modelName == "dpt_large_384":
+        model = DPTDepthModel_preprocessing(model_path, backbone=backbone, non_negative=True)
+    
     model.eval()
-    OPSET_VERSION = 11
-    H = W = 384
-    img_input = np.zeros((3, H, W), np.float32)
+
+    img_input = np.zeros((3, net_w, net_h), np.float32)
 
     # compute
     with torch.no_grad():
@@ -352,24 +364,6 @@ def convert_specific_models(opt):
     torch.onnx.export(model, sample, onnxFile, opset_version=OPSET_VERSION)
     print("finished")
 
-    """
-    torch.onnx.export(
-        model,
-        torch.rand(1, 3, net_h, net_w, dtype=torch.float),
-        onnxFile,
-        export_params=True,
-        opset_version=OPSET_VERSION,
-        input_names=["input_image"],
-        output_names=["output_depth"],
-        do_constant_folding=True
-    )
-
-    # free memory
-    del model
-    gc.collect()
-    print(f'Convert {modelName} model files to ONNX.')
-    """
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--mode', type=str, default='single', help='single or all')
@@ -384,5 +378,3 @@ if __name__ == '__main__':
         convert_all_models(opt)
         
     
-
- 

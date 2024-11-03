@@ -1,8 +1,4 @@
 # Usage: pip install -r requirements.txt
-torch==1.13 
-torchvision==0.14.0
-timm==0.6.13
-einops==0.6.0
 
 # Base ----------------------------------------
 matplotlib>=3.2.2
@@ -13,7 +9,10 @@ PyYAML>=5.3.1
 requests>=2.23.0
 scipy>=1.4.1
 tqdm>=4.41.0
+timm
 flake8
+protobuf==3.20.1
+
 #protobuf<4.21.3
 #torchsummary
 # Logging -------------------------------------
@@ -25,9 +24,8 @@ flake8
 #seaborn>=0.11.0
 
 # Export --------------------------------------
-onnx==1.7.0
-onnxruntime==1.5.2
-coremltools>=4.1  # CoreML export
+onnx==1.7.0 
+onnxruntime==1.16.3
 onnx-simplifier>=0.3.6  # ONNX simplifier
 
 # Extras --------------------------------------

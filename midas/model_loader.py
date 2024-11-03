@@ -208,7 +208,7 @@ def load_model(device, model_path, model_type="dpt_large_384", optimize=True, he
 
     if height is not None:
         net_w, net_h = height, height
-
+    
     transform = Compose(
         [
             Resize(
