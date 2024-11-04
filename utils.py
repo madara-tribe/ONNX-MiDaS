@@ -1,6 +1,9 @@
 import cv2
 from midas.transforms import Resize, NormalizeImage, PrepareForNet
 from torchvision.transforms import Compose
+from midas.dpt_depth import DPTDepthModel
+from midas.midas_net_custom import MidasNet_small
+from midas.midas_net import MidasNet
 
 def read_image(path):
     """Read image and output RGB image (0-1).
@@ -50,3 +53,47 @@ def call_transform(model_type="dpt_large_384"):
         ]
     )
     return transform, net_w, net_h
+
+
+class DPTDepthModel_prepro(DPTDepthModel):
+    """Network for monocular depth estimation.
+    """
+    def forward(self, x):
+        """Forward pass.
+
+        Args:
+            x (tensor): input data (image)
+
+        Returns:
+            tensor: depth
+        """
+        return DPTDepthModel.forward(self, x)
+    
+class MidasNet_small_prepro(MidasNet_small):
+    """Network for monocular depth estimation.
+    """
+    def forward(self, x):
+        """Forward pass.
+
+        Args:
+            x (tensor): input data (image)
+
+        Returns:
+            tensor: depth
+        """
+        return MidasNet_small.forward(self, x)
+        
+        
+class MidasNet_prepro(MidasNet):
+    """Network for monocular depth estimation.
+    """
+    def forward(self, x):
+        """Forward pass.
+
+        Args:
+            x (tensor): input data (image)
+
+        Returns:
+            tensor: depth
+        """
+        return MidasNet.forward(self, x)

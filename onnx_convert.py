@@ -3,41 +3,13 @@ import torch
 from midas.dpt_depth import DPTDepthModel
 from midas.midas_net_custom import MidasNet_small
 from midas.midas_net import MidasNet
+from utils import DPTDepthModel_prepro, MidasNet_small_prepro, MidasNet_prepro
 import os
 import requests
 import gc
 import numpy as np
     
 OPSET_VERSION = 14
-
-class DPTDepthModel_preprocessing(DPTDepthModel):
-    """Network for monocular depth estimation.
-    """
-    def forward(self, x):
-        """Forward pass.
-
-        Args:
-            x (tensor): input data (image)
-
-        Returns:
-            tensor: depth
-        """
-        return DPTDepthModel.forward(self, x)
-        
-class MidasNet_preprocessing(MidasNet):
-    """Network for monocular depth estimation.
-    """
-    def forward(self, x):
-        """Forward pass.
-
-        Args:
-            x (tensor): input data (image)
-
-        Returns:
-            tensor: depth
-        """
-        return MidasNet.forward(self, x)
-
 
 def download_file(url, folder_path):
     # Create the folder if it doesn't exist
@@ -106,9 +78,7 @@ single_model_params = {"dpt_beit_large_512":
     "dpt_swin_large_384": ["weights/dpt_swin_large_384.pt", "swinl12_384", "https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_swin_large_384.pt"],
     
     "dpt_next_vit_large_384": ["weights/dpt_next_vit_large_384.pt", "next_vit_large_6m", "https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_next_vit_large_384.pt"],
-    
-    "dpt_levit_224":["weights/dpt_levit_224.pt", "levit_384", "https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_levit_224.pt"],
-    
+
     "dpt_large_384": ["weights/dpt_large_384.pt", "vitl16_384", "https://github.com/isl-org/MiDaS/releases/download/v3/dpt_large_384.pt"],
     
     "midas_v21_384": ["weights/midas_v21_384.pt", "", "https://github.com/isl-org/MiDaS/releases/download/v2_1/midas_v21_384.pt"],
@@ -169,12 +139,6 @@ model_params = [
         "url": "https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_next_vit_large_384.pt"
     },
     {
-        "name": "dpt_levit_224",
-        "path": "weights/dpt_levit_224.pt",
-        "backbone": "levit_384",
-        "url": "https://github.com/isl-org/MiDaS/releases/download/v3_1/dpt_levit_224.pt"
-    },
-    {
         "name": "dpt_large_384",
         "path": "weights/dpt_large_384.pt",
         "backbone": "vitl16_384",
@@ -208,16 +172,8 @@ def convert_all_models(opt):
 
         if modelName != "midas_v21_384" and modelName != "midas_v21_small_256":
             patchUnflatten()
-
-        if modelName == "dpt_levit_224":
-            model = DPTDepthModel(
-                path=model_path,
-                backbone=model_param["backbone"],
-                non_negative=True,
-                head_features_1=64,
-                head_features_2=8,
-            )
-        elif modelName == "midas_v21_384":
+        
+        if modelName == "midas_v21_384":
             model = MidasNet(model_path, non_negative=True)
         elif modelName == "midas_v21_small_256":
             model = MidasNet_small(
@@ -250,26 +206,41 @@ def convert_all_models(opt):
         else:
             mean = torch.tensor([0.5, 0.5, 0.5])
             std = torch.tensor([0.5, 0.5, 0.5])
-
+            
         # insert normalization layer at the beginning of the model
         norm_layer = NormalizationLayer(mean, std)
         model = torch.nn.Sequential(norm_layer, model)
 
+        if modelName == "midas_v21_384":
+            model = MidasNet_prepro(model_path, non_negative=True)
+        elif modelName == "midas_v21_small_256":
+            model = MidasNet_small_prepro(model_path, non_negative=True)
+        else:
+            model = DPTDepthModel_prepro(model_path, backbone=model_param["backbone"], non_negative=True)
+        
         model.eval()
-        torch.onnx.export(
-            model,
-            torch.rand(1, 3, net_h, net_w, dtype=torch.float),
-            onnxFile,
-            export_params=True,
-            opset_version=OPSET_VERSION,
-            input_names=["input_image"],
-            output_names=["output_depth"],
-            do_constant_folding=True
-        )
 
+        img_input = np.zeros((3, net_w, net_h), np.float32)
+
+        # compute
+        with torch.no_grad():
+            sample = torch.from_numpy(img_input).unsqueeze(0)
+            prediction = model.forward(sample)
+            prediction = (
+                torch.nn.functional.interpolate(
+                    prediction.unsqueeze(1),
+                    size=img_input.shape[:2],
+                    mode="bicubic",
+                    align_corners=False,
+                )
+                .squeeze()
+                .cpu()
+                .numpy()
+            )
+
+        torch.onnx.export(model, sample, onnxFile, opset_version=OPSET_VERSION)
         # free memory
         del model
-        gc.collect()
     print('Convert all model files to ONNX.')
 
 
@@ -289,16 +260,8 @@ def convert_specific_models(opt):
 
     if modelName != "midas_v21_384" and modelName != "midas_v21_small_256":
         patchUnflatten()
-
-    if modelName == "dpt_levit_224":
-        model = DPTDepthModel(
-            path=model_path,
-            backbone=backbone,
-            non_negative=True,
-            head_features_1=64,
-            head_features_2=8,
-        )
-    elif modelName == "midas_v21_384":
+        
+    if modelName == "midas_v21_384":
         model = MidasNet(model_path, non_negative=True)
     elif modelName == "midas_v21_small_256":
         model = MidasNet_small(
@@ -312,7 +275,7 @@ def convert_specific_models(opt):
     else:
         model = DPTDepthModel(
             path=model_path,
-            backbone=backbone,
+            backbone=model_param["backbone"],
             non_negative=True,
         )
 
@@ -337,9 +300,11 @@ def convert_specific_models(opt):
     model = torch.nn.Sequential(norm_layer, model)
 
     if modelName == "midas_v21_384":
-        model = MidasNet_preprocessing(model_path, non_negative=True)
-    elif modelName == "dpt_large_384":
-        model = DPTDepthModel_preprocessing(model_path, backbone=backbone, non_negative=True)
+        model = MidasNet_prepro(model_path, non_negative=True)
+    elif modelName == "midas_v21_small_256":
+        model = MidasNet_small_prepro(model_path, non_negative=True)
+    else:
+        model = DPTDepthModel_prepro(model_path, backbone=backbone, non_negative=True)
     
     model.eval()
 
@@ -369,7 +334,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mode', type=str, default='single', help='single or all')
     parser.add_argument('-t', '--model_type',
                         default='dpt_large_384',
-                        help='Model type: dpt_beit_large_512, dpt_beit_large_384, dpt_beit_base_384, dpt_swin2_large_384, dpt_swin2_base_384, dpt_swin2_tiny_256, dpt_swin_large_384, dpt_next_vit_large_384, dpt_levit_224, dpt_large_384, midas_v21_384, midas_v21_small_256')
+                        help='Model type: dpt_beit_large_512, dpt_beit_large_384, dpt_beit_base_384, dpt_swin2_large_384, dpt_swin2_base_384, dpt_swin2_tiny_256, dpt_swin_large_384, dpt_next_vit_large_384, dpt_large_384, midas_v21_384, midas_v21_small_256')
     parser.add_argument('-o', '--out_folder', type=str, default='weights', help='optput flder')
     opt = parser.parse_args()
     if opt.mode=='single':

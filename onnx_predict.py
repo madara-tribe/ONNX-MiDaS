@@ -37,7 +37,7 @@ def inference(opt):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--onnx_model_path', type=str, default='weights/dpt_large_384.onnx', help='onnx midas weight model')
+    parser.add_argument('-p', '--onnx_model_path', type=str, default='weights/dpt_large_384.onnx', help='onnx midas weight model')
     parser.add_argument('-i', '--filename', type=str, default='input/input.jpg', help='input image name')
     parser.add_argument('-o', '--out_name', type=str, default='output/result', help='optput image name, must png not jpg')
     opt = parser.parse_args()
