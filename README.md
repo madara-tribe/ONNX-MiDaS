@@ -12,6 +12,7 @@ tourchvision 0.17.2
 onnx 1.7.0 
 onnxruntime 1.16.3
 ```
+other branch(Midas small) is [here](https://github.com/madara-tribe/ONNX-MiDaS-Depth-Estimater/tree/Midas2.1?tab=readme-ov-file)
 
 ## Model Type For ONNX
 ```txt
