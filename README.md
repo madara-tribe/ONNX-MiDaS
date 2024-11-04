@@ -37,6 +37,6 @@ $ python3 onnx_predict.py -p <model path> -i <input file> -o <output file>
 
 
 # References
-- [sentis-MiDaS]([https://github.com/isl-org/MiDaS](https://huggingface.co/julienkay/sentis-MiDaS/blob/main/README.md))
+- [sentis-MiDaS](https://github.com/isl-org/MiDaS](https://huggingface.co/julienkay/sentis-MiDaS/blob/main/README.md)
 
-- [ONNX-SCDepth-Monocular-Depth-Estimation]([https://github.com/isl-org/MiDaS/tree/master/tf](https://github.com/ibaiGorordo/ONNX-SCDepth-Monocular-Depth-Estimation))
+- [ONNX-SCDepth-Monocular-Depth-Estimation](https://github.com/isl-org/MiDaS/tree/master/tf](https://github.com/ibaiGorordo/ONNX-SCDepth-Monocular-Depth-Estimation)
