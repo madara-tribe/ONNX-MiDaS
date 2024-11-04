@@ -1,6 +1,6 @@
 # Midas Monocular Depth Estimation
 
-<img src="https://github.com/madara-tribe/MidasDepthEstimater/assets/48679574/a28fd8f1-59b3-4b20-bec4-da3c1e1639d6" width="700px" height="400px"/>
+<img src="https://github.com/madara-tribe/MidasDepthEstimater/assets/48679574/a28fd8f1-59b3-4b20-bec4-da3c1e1639d6" width="600px" height="300px"/>
 
 
 ## Version
@@ -33,8 +33,7 @@ $ python3 onnx_predict.py -p <model path> -i <input file> -o <output file>
 
 ## result (dpt_large_384)
 
-
-
+<img src="https://github.com/user-attachments/assets/b85f6337-3c9f-4d63-b55f-e690e5c4ad3c" width="400px" height="300px"/>
 
 
 # References
