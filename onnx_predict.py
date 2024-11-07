@@ -4,13 +4,13 @@ import sys
 import onnxruntime as rt
 import numpy as np
 import cv2
-from utils import read_image, call_transform
+from utils import read_image, call_transform, draw_depth
 
 
 def inference(opt):
     transform, net_h, net_w = call_transform()
     image = read_image(opt.filename)
-    
+    h, w, _ = image.shape
     img_input = transform({"image": image})["image"]
     print('start prediction')
     start_time = time.time()
@@ -26,12 +26,9 @@ def inference(opt):
     onnx_output = onnx_model.run([output_name], {input_name: img_input.reshape(1, 3, net_h, net_w).astype(np.float32)})[0]
     print(onnx_output.shape, output_name, input_name, img_input.shape)
     depth_img = onnx_output[0]
-    output_norm = cv2.normalize(depth_img, None, 0, 1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    #output_norm = normalize_depth(output_norm, bits=2)
-    colored_depth = (output_norm*255).astype(np.uint8)
-    colored_depth = cv2.applyColorMap(colored_depth, cv2.COLORMAP_MAGMA)
+    colored_depth = draw_depth(depth_img, w, h)
     print("Prediction took {:.2f} seconds".format(time.time() - start_time))
-    cv2.imwrite(opt.out_name + '.jpg', output_norm)
+    #cv2.imwrite(opt.out_name + '.jpg', output_norm)
     cv2.imwrite(opt.out_name + '_colored.jpg', colored_depth)
 
 
